@@ -1,0 +1,38 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      PORTAL_DEMO: "false"
+      PORTAL_DB_PATH: /data/hospital.sqlite
+      PORTAL_BACKUP_DIR: /data/backups
+      PORTAL_ADMIN_EMAIL: ${PORTAL_ADMIN_EMAIL:?Set initial administrator email}
+      PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD:?Set initial administrator password}
+      PORTAL_ORIGIN: https://${PORTAL_DOMAIN:?Set the public domain}
+      PORTAL_REPORT_KEY: ${PORTAL_REPORT_KEY:?Set report encryption key}
+      PORTAL_BACKUP_KEY: ${PORTAL_BACKUP_KEY:?Set backup encryption key}
+    volumes:
+      - hospital-data:/data
+    expose:
+      - "3000"
+    security_opt:
+      - no-new-privileges:true
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:?Set the public domain}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  hospital-data:
+  caddy-data:
+  caddy-config:

@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local patient database (never commit)
+/.portal/
+
+# Hospital data and secrets must never be uploaded to GitHub
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.sah
+/backups/
+!.env.example
