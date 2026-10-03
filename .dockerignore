@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.portal
+.env*
+!.env.example
+*.sqlite*
+*.db*
+*.sah
+backups
+coverage
+*.log
