@@ -991,6 +991,31 @@ test(
             },
           );
           await h.test(
+            "populated workspaces render without streamed server errors",
+            async () => {
+              for (const [path, cookie, expected] of [
+                ["/admin/staff", manager, "Create staff account"],
+                ["/admin/appointments", manager, "Follow-up request"],
+                ["/admin/inpatient", manager, "Discharged"],
+                ["/admin/patients/1", manager, "John Doe"],
+                ["/patient", john, "John Doe"],
+              ]) {
+                const response = await call(path, { cookie });
+                assert.equal(response.status, 200, path);
+                // Streaming responses can return 200 even when a component crashes.
+                assert.doesNotMatch(
+                  response.text,
+                  /\\n[0-9a-f]+:E\{|Only plain objects|We couldn’t load this page/,
+                  path,
+                );
+                assert.ok(
+                  response.text.includes(expected),
+                  `${path}: expected rendered content`,
+                );
+              }
+            },
+          );
+          await h.test(
             "clinical records persist after restarting the server",
             async () => {
               await stop();

@@ -20,7 +20,8 @@ export function beds(): Bed[] {
     .prepare(
       "SELECT b.*,EXISTS(SELECT 1 FROM admissions a WHERE a.bed_id=b.id AND a.discharged_at IS NULL) AS occupied FROM beds b ORDER BY ward,label",
     )
-    .all() as unknown as Bed[];
+    .all()
+    .map((row) => ({ ...row })) as unknown as Bed[];
 }
 export function createBed(value: unknown, user: Session) {
   const data = object(value),
@@ -51,7 +52,8 @@ export function admissions(patientId?: string): Admission[] {
       .prepare(
         "SELECT n.id,u.name AS author,n.observations,n.created_at AS createdAt FROM nursing_notes n JOIN users u ON u.id=n.author_id WHERE n.admission_id=? ORDER BY n.created_at DESC",
       )
-      .all(String(row.id)),
+      .all(String(row.id))
+      .map((note) => ({ ...note })),
   })) as unknown as Admission[];
 }
 export function admit(value: unknown, user: Session) {

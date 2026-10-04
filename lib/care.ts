@@ -79,11 +79,15 @@ function patientExists(id: string) {
   if (!findPatient(id)) throw new InputError("Patient not found.", 404);
 }
 export function staff(): Staff[] {
-  return db()
-    .prepare(
-      "SELECT id,name,email,role,active,registration FROM users WHERE role IN ('admin','doctor','nurse') ORDER BY name",
-    )
-    .all() as unknown as Staff[];
+  return (
+    db()
+      .prepare(
+        "SELECT id,name,email,role,active,registration FROM users WHERE role IN ('admin','doctor','nurse') ORDER BY name",
+      )
+      .all()
+      // SQLite rows have a null prototype; React client props require plain objects.
+      .map((row) => ({ ...row })) as unknown as Staff[]
+  );
 }
 export function doctors() {
   return staff()
@@ -144,7 +148,8 @@ export function appointments(patientId?: string): Appointment[] {
         (patientId ? " WHERE a.patient_id=?" : "") +
         " ORDER BY a.starts_at DESC",
     )
-    .all(...(patientId ? [patientId] : [])) as unknown as Appointment[];
+    .all(...(patientId ? [patientId] : []))
+    .map((row) => ({ ...row })) as unknown as Appointment[];
 }
 function validateSlot(data: Record<string, unknown>) {
   const local = textField(data, "localTime", 16);
@@ -376,7 +381,8 @@ export function reports(patientId: string): Report[] {
     .prepare(
       "SELECT id,patient_id AS patientId,title,mime,size,created_at AS createdAt FROM reports WHERE patient_id=? ORDER BY created_at DESC",
     )
-    .all(patientId) as unknown as Report[];
+    .all(patientId)
+    .map((row) => ({ ...row })) as unknown as Report[];
 }
 export function addReport(
   patientId: string,
