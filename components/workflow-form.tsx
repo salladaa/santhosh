@@ -32,10 +32,19 @@ export function WorkflowForm({
         setError("");
         try {
           await request(url, method, payload(data));
-          if (onSuccess) onSuccess();
-          else window.location.reload();
+          if (onSuccess) {
+            onSuccess();
+            setBusy(false);
+          } else window.location.reload();
         } catch (e) {
-          setError(e instanceof Error ? e.message : "Unable to save.");
+          setError(
+            e instanceof Error &&
+              (e.name === "TimeoutError" || e.name === "AbortError")
+              ? "Save not confirmed. Check the latest queue status before retrying."
+              : e instanceof Error
+                ? e.message
+                : "Unable to save.",
+          );
           setBusy(false);
         }
       }}

@@ -9,12 +9,12 @@ export function migrate(connection: DatabaseSync) {
         .prepare("SELECT sql FROM sqlite_master WHERE name='users'")
         .get()?.sql,
     );
-    if (!usersSql.includes("'nurse'")) {
+    if (!usersSql.includes("'pharmacy'")) {
       const oldColumns = connection
         .prepare("PRAGMA table_info(users)")
         .all()
         .map((r) => r.name);
-      connection.exec(`CREATE TABLE users_new (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('admin','patient','doctor','nurse')), patient_id TEXT UNIQUE REFERENCES patients(id) ON DELETE CASCADE, name TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,registration TEXT NOT NULL DEFAULT '');
+      connection.exec(`CREATE TABLE users_new (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('admin','patient','doctor','nurse','reception','lab','pharmacy')), patient_id TEXT UNIQUE REFERENCES patients(id) ON DELETE CASCADE, name TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,registration TEXT NOT NULL DEFAULT '');
       INSERT INTO users_new SELECT id,email,password_hash,role,patient_id,name,${oldColumns.includes("active") ? "active" : "1"},${oldColumns.includes("registration") ? "registration" : "''"} FROM users;
       DROP TABLE users;
       ALTER TABLE users_new RENAME TO users;`);
@@ -60,7 +60,21 @@ export function migrate(connection: DatabaseSync) {
       CREATE UNIQUE INDEX IF NOT EXISTS occupied_bed ON admissions(bed_id) WHERE discharged_at IS NULL;
       CREATE UNIQUE INDEX IF NOT EXISTS admitted_patient ON admissions(patient_id) WHERE discharged_at IS NULL;
       CREATE TABLE IF NOT EXISTS nursing_notes(id TEXT PRIMARY KEY,admission_id TEXT NOT NULL REFERENCES admissions(id),author_id TEXT NOT NULL REFERENCES users(id),observations TEXT NOT NULL,created_at TEXT NOT NULL);
-      INSERT INTO settings (key,value) VALUES ('schema_version','3') ON CONFLICT(key) DO UPDATE SET value='3';
+      CREATE TABLE IF NOT EXISTS encounters (
+        id TEXT PRIMARY KEY, patient_id TEXT NOT NULL REFERENCES patients(id), complaint TEXT NOT NULL,
+        intake_notes TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('Waiting','In consultation','Completed')),
+        doctor_id TEXT REFERENCES users(id), visit_id TEXT UNIQUE REFERENCES visits(id), version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+      CREATE UNIQUE INDEX IF NOT EXISTS active_encounter ON encounters(patient_id) WHERE status!='Completed';
+      CREATE TABLE IF NOT EXISTS lab_orders (
+        id TEXT PRIMARY KEY, encounter_id TEXT NOT NULL REFERENCES encounters(id), test_name TEXT NOT NULL,
+        instructions TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('Ordered','Collected','In progress','Completed','Released')),
+        result TEXT NOT NULL DEFAULT '', version INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS pharmacy_orders (
+        id TEXT PRIMARY KEY, encounter_id TEXT NOT NULL REFERENCES encounters(id), visit_id TEXT NOT NULL UNIQUE REFERENCES visits(id),
+        status TEXT NOT NULL CHECK(status IN ('Pending','Preparing','Ready','Dispensed')), note TEXT NOT NULL DEFAULT '',
+        version INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL);
+      INSERT INTO settings (key,value) VALUES ('schema_version','4') ON CONFLICT(key) DO UPDATE SET value='4';
     `);
     if (connection.prepare("PRAGMA foreign_key_check").all().length)
       throw new Error("Database relationship check failed.");

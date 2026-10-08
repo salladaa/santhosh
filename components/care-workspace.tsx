@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import type { CareData, Medicine, Session } from "@/lib/types";
 import { dateTimeLabel, money } from "@/lib/format";
@@ -218,6 +219,11 @@ export function CareWorkspace({
           <summary>
             <T>Add visit</T>
           </summary>
+          <p className="notice">
+            For a shared-queue consultation with pharmacy and lab orders, use{" "}
+            <Link href="/admin/workflow">Live workflow</Link>. This form records
+            a standalone visit only.
+          </p>
           <VisitForm patientId={patientId} doctors={doctors} role={role} />
         </details>
       )}

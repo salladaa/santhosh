@@ -1,3 +1,4 @@
+import { PatientOrders } from "@/components/workflow-desk";
 import { careData, doctors } from "@/lib/care";
 import { admissions } from "@/lib/inpatient";
 import { CareWorkspace } from "@/components/care-workspace";
@@ -34,6 +35,7 @@ export default async function PatientPage() {
         doctors={[]}
         role="patient"
       />
+      <PatientOrders />
       <div className="patient-help">
         <strong>Your care team is here to help.</strong>
         <p>

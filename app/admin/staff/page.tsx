@@ -9,7 +9,7 @@ export default async function StaffPage() {
       <PageHeading
         eyebrow="ACCESS MANAGEMENT"
         title="Staff"
-        description="Named accounts for doctors and nurses. Only administrators can create or disable accounts."
+        description="Named accounts for doctors, nurses, reception, lab and pharmacy. Only administrators can create or disable accounts."
       />
       <StaffWorkspace staff={staff()} />
     </>

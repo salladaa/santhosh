@@ -23,7 +23,8 @@ export type PatientInput = Omit<Patient, "id" | "version"> & {
 };
 export type Session = {
   userId: string;
-  role: "admin" | "doctor" | "nurse" | "patient";
+  role:
+    "admin" | "doctor" | "nurse" | "reception" | "lab" | "pharmacy" | "patient";
   patientId: string | null;
   name: string;
 };
@@ -38,7 +39,7 @@ export type Activity = {
 export type Staff = {
   id: string;
   name: string;
-  role: "admin" | "doctor" | "nurse";
+  role: Exclude<Session["role"], "patient">;
   email: string;
   active: number;
   registration: string;

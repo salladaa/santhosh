@@ -82,7 +82,7 @@ export function staff(): Staff[] {
   return (
     db()
       .prepare(
-        "SELECT id,name,email,role,active,registration FROM users WHERE role IN ('admin','doctor','nurse') ORDER BY name",
+        "SELECT id,name,email,role,active,registration FROM users WHERE role IN ('admin','doctor','nurse','reception','lab','pharmacy') ORDER BY name",
       )
       .all()
       // SQLite rows have a null prototype; React client props require plain objects.
@@ -99,10 +99,17 @@ export function saveStaff(value: unknown, actor: Session) {
     name = textField(data, "name", 100),
     email = textField(data, "email", 254).toLowerCase(),
     password = passwordField(data, "password"),
-    registration = textField(data, "registration", 100);
-  const role = data.role === "nurse" ? "nurse" : "doctor";
-  if (data.role && !["doctor", "nurse"].includes(String(data.role)))
-    throw new InputError("Choose doctor or nurse.");
+    registration = textField(data, "registration", 100, false);
+  const role = String(data.role || "doctor");
+  if (
+    data.role &&
+    !["doctor", "nurse", "reception", "lab", "pharmacy"].includes(
+      String(data.role),
+    )
+  )
+    throw new InputError("Choose a valid staff role.");
+  if (["doctor", "nurse"].includes(role) && !registration)
+    throw new InputError("Enter the clinical registration number.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 12)
     throw new InputError(
       "Use a valid email and a password of at least 12 characters.",
@@ -123,9 +130,14 @@ export function saveStaff(value: unknown, actor: Session) {
 export function setStaffActive(id: string, active: boolean, actor: Session) {
   transaction(() => {
     const target = db().prepare("SELECT role FROM users WHERE id=?").get(id);
-    if (!target || !["doctor", "nurse"].includes(String(target.role)))
+    if (
+      !target ||
+      !["doctor", "nurse", "reception", "lab", "pharmacy"].includes(
+        String(target.role),
+      )
+    )
       throw new InputError(
-        "Only doctor and nurse accounts can be changed here.",
+        "Only non-administrator staff accounts can be changed here.",
         400,
       );
     db()
@@ -303,7 +315,12 @@ export function visits(patientId: string): Visit[] {
       return { ...fields, ...JSON.parse(String(data)) } as Visit;
     });
 }
-export function addVisit(patientId: string, value: unknown, user: Session) {
+export function addVisit(
+  patientId: string,
+  value: unknown,
+  user: Session,
+  afterSave?: (id: string) => void,
+) {
   const data = object(value),
     doctorId =
       user.role === "doctor" ? user.userId : textField(data, "doctorId", 100);
@@ -346,6 +363,7 @@ export function addVisit(patientId: string, value: unknown, user: Session) {
       now,
     );
     audit(user, "Recorded visit", "visit", id);
+    afterSave?.(id);
     return id;
   });
 }

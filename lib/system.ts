@@ -14,6 +14,9 @@ export function systemStatus() {
     "admissions",
     "nursing_notes",
     "audit_events",
+    "encounters",
+    "lab_orders",
+    "pharmacy_orders",
   ] as const;
   const counts = Object.fromEntries(
     tables.map((table) => [

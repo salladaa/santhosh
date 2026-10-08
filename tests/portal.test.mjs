@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
@@ -977,7 +978,7 @@ test(
               const status = (await call("/api/system", { cookie: manager }))
                 .json;
               assert.equal(status.healthy, true);
-              assert.equal(status.schemaVersion, "3");
+              assert.equal(status.schemaVersion, "4");
               assert.equal(status.counts.reports, 1);
               assert.equal(status.counts.admissions, 1);
               const events = (
@@ -1072,6 +1073,371 @@ test(
                 admissionId,
               );
             },
+          );
+        },
+      );
+      await t.test(
+        "connected department workflow with shared queue and private role views",
+        async () => {
+          const manager = await login("admin@hospital.com", "admin123");
+          const accounts = {};
+          const workflowPassword = randomBytes(24).toString("base64url");
+          const patientPassword = randomBytes(24).toString("base64url");
+          for (const role of [
+            "reception",
+            "lab",
+            "pharmacy",
+            "doctor",
+            "doctor2",
+          ]) {
+            const created = await call("/api/staff", {
+              method: "POST",
+              cookie: manager,
+              data: {
+                name: `Workflow ${role}`,
+                email: `${role}@workflow.test`,
+                password: workflowPassword,
+                role: role === "doctor2" ? "doctor" : role,
+                registration: role.startsWith("doctor") ? "TEST-WORKFLOW" : "",
+              },
+            });
+            assert.equal(created.status, 201, created.text);
+            accounts[role] = {
+              id: created.json.id,
+              cookie: await login(`${role}@workflow.test`, workflowPassword),
+            };
+          }
+          const receptionist = accounts.reception.cookie,
+            lab = accounts.lab.cookie,
+            pharmacy = accounts.pharmacy.cookie;
+          const post = (cookie, data) =>
+            call("/api/workflow", { method: "POST", cookie, data });
+          for (const cookie of [receptionist, lab, pharmacy]) {
+            for (const path of [
+              "/api/patients",
+              "/api/patients/1",
+              "/api/admissions",
+              "/api/appointments",
+              "/api/invoices",
+              "/api/patients/1/care",
+            ])
+              assert.equal((await call(path, { cookie })).status, 403, path);
+            assert.equal(
+              (await call("/admin/workflow", { cookie })).status,
+              200,
+            );
+          }
+          const registration = {
+            name: "Workflow new patient",
+            age: 0,
+            phone: "0000000000",
+            email: "newpatient@workflow.test",
+            password: patientPassword,
+            address: "",
+            allergies: "",
+            emergencyContact: "",
+          };
+          assert.equal(
+            (
+              await call("/api/workflow/patients", {
+                method: "POST",
+                cookie: lab,
+                data: registration,
+              })
+            ).status,
+            403,
+          );
+          const registered = await call("/api/workflow/patients", {
+            method: "POST",
+            cookie: receptionist,
+            data: registration,
+          });
+          assert.equal(registered.status, 201, registered.text);
+          assert.ok(
+            (
+              await call("/api/workflow", { cookie: receptionist })
+            ).json.patients.some((p) => p.id === registered.json.id),
+          );
+          const intake = {
+            action: "intake",
+            patientId: "3",
+            complaint: "Workflow demo complaint",
+            notes: "Demo intake notes",
+          };
+          assert.equal((await post(lab, intake)).status, 403);
+          const received = await post(receptionist, intake);
+          assert.equal(received.status, 201, received.text);
+          const encounterId = received.json.id;
+          assert.equal((await post(receptionist, intake)).status, 409);
+          const queue = await call("/api/workflow", {
+            cookie: accounts.doctor.cookie,
+          });
+          assert.equal(
+            queue.json.encounters.find((e) => e.id === encounterId).complaint,
+            intake.complaint,
+          );
+          const claims = await Promise.all(
+            [accounts.doctor, accounts.doctor2].map((a) =>
+              post(a.cookie, { action: "claim", id: encounterId, version: 1 }),
+            ),
+          );
+          assert.deepEqual(claims.map((r) => r.status).sort(), [200, 409]);
+          const winner =
+            claims[0].status === 200 ? accounts.doctor : accounts.doctor2;
+          const loser =
+            claims[0].status === 200 ? accounts.doctor2 : accounts.doctor;
+          const prescription = {
+            action: "confirm",
+            id: encounterId,
+            version: 2,
+            diagnosis: "Demo diagnosis",
+            complaint: intake.complaint,
+            notes: "Private consultation notes",
+            vitals: "",
+            followUp: "",
+            medicines: [
+              {
+                name: "Test medicine",
+                dose: "Test dose",
+                frequency: "Test frequency",
+                duration: "Test duration",
+                instructions: "Demo only",
+              },
+            ],
+            labTests: [
+              {
+                name: "Demo laboratory test",
+                instructions: "Sample instructions",
+              },
+            ],
+          };
+          assert.equal((await post(loser.cookie, prescription)).status, 403);
+          assert.equal(
+            (
+              await post(winner.cookie, {
+                ...prescription,
+                labTests: [{ name: "", instructions: "" }],
+              })
+            ).status,
+            400,
+          );
+          assert.equal(
+            (await call("/api/workflow", { cookie: lab })).json.labs.length,
+            0,
+          );
+          assert.equal((await post(winner.cookie, prescription)).status, 201);
+          assert.equal((await post(winner.cookie, prescription)).status, 409);
+          let labView = (await call("/api/workflow", { cookie: lab })).json;
+          assert.equal(labView.labs.length, 1);
+          assert.deepEqual(labView.pharmacy, []);
+          assert.deepEqual(labView.encounters, []);
+          assert.deepEqual(labView.patients, []);
+          assert.ok(
+            !JSON.stringify(labView).includes("Private consultation notes"),
+          );
+          const rx = (await call("/api/workflow", { cookie: pharmacy })).json;
+          assert.deepEqual(rx.labs, []);
+          assert.equal(rx.pharmacy[0].medicines[0].name, "Test medicine");
+          const labId = labView.labs[0].id,
+            rxId = rx.pharmacy[0].id;
+          assert.equal(
+            (
+              await post(pharmacy, {
+                action: "lab",
+                id: labId,
+                version: 1,
+                status: "Collected",
+              })
+            ).status,
+            403,
+          );
+          assert.equal(
+            (
+              await post(lab, {
+                action: "lab",
+                id: labId,
+                version: 1,
+                status: "Completed",
+                result: "Demo",
+              })
+            ).status,
+            409,
+          );
+          for (const [i, status] of [
+            "Collected",
+            "In progress",
+            "Completed",
+          ].entries())
+            assert.equal(
+              (
+                await post(lab, {
+                  action: "lab",
+                  id: labId,
+                  version: i + 1,
+                  status,
+                  result: "Demo result with units and reference range",
+                })
+              ).status,
+              200,
+            );
+          const michael = await login("michael@hospital.com", "michael123"),
+            john = await login("john@hospital.com", "john123");
+          assert.equal(
+            (await call("/api/workflow", { cookie: michael })).json.labs.length,
+            0,
+          );
+          assert.equal(
+            (
+              await post(lab, {
+                action: "lab",
+                id: labId,
+                version: 4,
+                status: "Released",
+              })
+            ).status,
+            403,
+          );
+          assert.equal(
+            (
+              await post(winner.cookie, {
+                action: "lab",
+                id: labId,
+                version: 4,
+                status: "Released",
+              })
+            ).status,
+            200,
+          );
+          assert.equal(
+            (await call("/api/workflow", { cookie: michael })).json.labs[0]
+              .result,
+            "Demo result with units and reference range",
+          );
+          const other = (await call("/api/workflow", { cookie: john })).json;
+          assert.deepEqual(other.labs, []);
+          assert.deepEqual(other.pharmacy, []);
+          for (const [i, status] of [
+            "Preparing",
+            "Ready",
+            "Dispensed",
+          ].entries())
+            assert.equal(
+              (
+                await post(pharmacy, {
+                  action: "pharmacy",
+                  id: rxId,
+                  version: i + 1,
+                  status,
+                  note: "Demo handover",
+                })
+              ).status,
+              200,
+            );
+          assert.equal(
+            (
+              await post(pharmacy, {
+                action: "pharmacy",
+                id: rxId,
+                version: 1,
+                status: "Preparing",
+                note: "",
+              })
+            ).status,
+            409,
+          );
+          assert.equal(
+            (await call("/api/workflow", { cookie: michael })).json.pharmacy[0]
+              .status,
+            "Dispensed",
+          );
+          const receptionView = (
+            await call("/api/workflow", { cookie: receptionist })
+          ).json;
+          assert.deepEqual(receptionView.labs, []);
+          assert.deepEqual(receptionView.pharmacy, []);
+          // A further visit with no medicines creates no pharmacy task, and unclaimed visits can be returned safely.
+          const next = await post(receptionist, { ...intake, patientId: "2" });
+          assert.equal(
+            (
+              await post(winner.cookie, {
+                action: "claim",
+                id: next.json.id,
+                version: 1,
+              })
+            ).status,
+            200,
+          );
+          assert.equal(
+            (
+              await post(loser.cookie, {
+                action: "release",
+                id: next.json.id,
+                version: 2,
+              })
+            ).status,
+            403,
+          );
+          assert.equal(
+            (
+              await post(winner.cookie, {
+                action: "release",
+                id: next.json.id,
+                version: 2,
+              })
+            ).status,
+            200,
+          );
+          assert.equal(
+            (
+              await post(loser.cookie, {
+                action: "claim",
+                id: next.json.id,
+                version: 3,
+              })
+            ).status,
+            200,
+          );
+          assert.equal(
+            (
+              await post(loser.cookie, {
+                ...prescription,
+                id: next.json.id,
+                version: 4,
+                medicines: [],
+                labTests: [],
+              })
+            ).status,
+            201,
+          );
+          assert.equal(
+            (await call("/api/workflow", { cookie: pharmacy })).json.pharmacy
+              .length,
+            1,
+          );
+          await stop();
+          await start();
+          assert.equal(
+            (await call("/api/workflow", { cookie: lab })).json.labs[0].status,
+            "Released",
+          );
+          assert.equal(
+            (await call("/api/workflow", { cookie: pharmacy })).json.pharmacy[0]
+              .status,
+            "Dispensed",
+          );
+          assert.equal(
+            (
+              await call(`/api/staff/${accounts.lab.id}`, {
+                method: "PUT",
+                cookie: manager,
+                data: { active: false },
+              })
+            ).status,
+            200,
+          );
+          assert.equal(
+            (await call("/api/workflow", { cookie: lab })).status,
+            401,
           );
         },
       );

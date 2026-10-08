@@ -216,9 +216,9 @@ export function deletePatient(id: string, version: number, actor: string) {
       throw new InputError("This record changed. Reload before deleting.", 409);
     const used = connection
       .prepare(
-        "SELECT (SELECT COUNT(*) FROM appointments WHERE patient_id=?) + (SELECT COUNT(*) FROM visits WHERE patient_id=?) + (SELECT COUNT(*) FROM reports WHERE patient_id=?) + (SELECT COUNT(*) FROM invoices WHERE patient_id=?) + (SELECT COUNT(*) FROM admissions WHERE patient_id=?) AS total",
+        "SELECT (SELECT COUNT(*) FROM appointments WHERE patient_id=?) + (SELECT COUNT(*) FROM visits WHERE patient_id=?) + (SELECT COUNT(*) FROM reports WHERE patient_id=?) + (SELECT COUNT(*) FROM invoices WHERE patient_id=?) + (SELECT COUNT(*) FROM admissions WHERE patient_id=?) + (SELECT COUNT(*) FROM encounters WHERE patient_id=?) AS total",
       )
-      .get(id, id, id, id, id);
+      .get(id, id, id, id, id, id);
     if (Number(used?.total))
       throw new InputError(
         "This patient has hospital records and cannot be deleted. Retain the medical history.",

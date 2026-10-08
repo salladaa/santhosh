@@ -6,7 +6,7 @@ import { apiError, body, json } from "@/lib/http";
 import { InputError } from "@/lib/validation";
 export async function POST(request: Request) {
   try {
-    const user = await requireApi(),
+    const user = await requireApi(false, true),
       data = object(await body(request)),
       current = passwordField(data, "currentPassword"),
       password = passwordField(data, "newPassword");

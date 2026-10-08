@@ -34,6 +34,23 @@ Demo accounts: `admin@hospital.com` / `admin123`; `john@hospital.com` / `john123
 
 Clinical text remains exactly as staff enter it. It is **not machine-translated**, medically interpreted or automatically prescribed. Some explanatory text and validation messages remain English; Telugu wording needs hospital staff review before rollout.
 
+## Connected reception, doctor, laboratory and pharmacy workflow
+
+Open **Live workflow** (`/admin/workflow`). Administrators can create Reception, Lab technician and Pharmacy accounts under Staff, alongside the two named doctor accounts.
+
+1. Reception registers/selects a patient, enters the problem and intake notes, and presses **Send to doctor**.
+2. Both doctors see one shared queue. A doctor presses **Claim patient**; a competing claim is rejected so both cannot take the same visit. The assigned doctor (or admin) can return an unconfirmed visit to the queue.
+3. The doctor enters consultation details, optional medicines and optional lab tests, then presses **Confirm and send orders**. This saves the visit and creates the department orders in one database transaction. Unconfirmed form input is not sent to another department.
+4. Lab staff progress each test through Collected → In progress → Completed. Doctors can read submitted results and release them to the patient.
+5. Pharmacy staff progress prescriptions through Preparing → Ready → Dispensed, with identity confirmation before dispensing.
+6. The patient's page shows their own released lab results and medicine preparation status. Other patients' orders are excluded by the server.
+
+Open screens poll the shared server every three seconds, with an update timestamp and connection-error notice. Updates usually appear on the next poll while connected; this is not a guaranteed three-second delivery SLA. Tablets must connect to the **same server and database**. `127.0.0.1` on a tablet points to that tablet, not the Mac. Use the configured hospital HTTPS address after deployment.
+
+Polling does not reload or overwrite consultation forms. Drafts are held only in the current page: leaving/reloading the page loses unsaved input. Failed confirmations show an error; version checks and unique constraints prevent duplicate queue entries, conflicting claims and repeat department transitions. A timeout may mean the server saved before the connection failed: check the refreshed queue before retrying.
+
+The older **Add visit** form records a standalone history entry and does not dispatch department orders. Use **Live workflow** for the connected process. This iteration supports text lab results; lab instruments, structured result ranges, critical-result alerts, corrected/recalled orders, stock deductions, partial dispensing and persistent consultation drafts remain follow-up work. Reception currently requires an email and patient password to register an account. Department views are restricted: reception gets intake/demographics, lab gets test orders/results, pharmacy gets confirmed medicines and recorded allergies.
+
 ## First-use workflow
 
 1. Sign in as administrator, go to **Staff**, and create doctor/nurse accounts with verified registration details.

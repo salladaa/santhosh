@@ -16,18 +16,34 @@ export async function session(): Promise<Session | null> {
       "SELECT u.id AS userId, u.role, u.patient_id AS patientId, u.name FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1",
     )
     .get(tokenHash(token), Date.now());
-  return row ? (row as unknown as Session) : null;
+  return row ? ({ ...row } as unknown as Session) : null;
 }
-export async function requirePage(role: Session["role"] | "staff") {
+export async function requirePage(
+  role: Session["role"] | "staff" | "workforce",
+) {
   const user = await session();
   if (!user) redirect("/login");
-  if (role === "staff" ? user.role === "patient" : user.role !== role)
-    redirect(user.role === "patient" ? "/patient" : "/admin");
+  if (
+    role === "workforce"
+      ? user.role === "patient"
+      : role === "staff"
+        ? !["admin", "doctor", "nurse"].includes(user.role)
+        : user.role !== role
+  )
+    redirect(
+      user.role === "patient"
+        ? "/patient"
+        : ["reception", "lab", "pharmacy"].includes(user.role)
+          ? "/admin/workflow"
+          : "/admin",
+    );
   return user;
 }
-export async function requireApi(admin = false) {
+export async function requireApi(admin = false, departmentAccess = false) {
   const user = await session();
   if (!user) throw new InputError("Please sign in again.", 401);
+  if (!departmentAccess && ["reception", "lab", "pharmacy"].includes(user.role))
+    throw new InputError("Use your department workspace.", 403);
   if (admin && user.role !== "admin")
     throw new InputError("Administrator access required.", 403);
   return user;

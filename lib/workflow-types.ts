@@ -1,0 +1,50 @@
+import type { Medicine } from "./types";
+export type Encounter = {
+  id: string;
+  patientId: string;
+  patientName: string;
+  age: number;
+  allergies: string;
+  complaint: string;
+  intakeNotes: string;
+  status: string;
+  doctorId: string | null;
+  doctorName: string | null;
+  visitId: string | null;
+  version: number;
+  createdAt: string;
+};
+export type LabOrder = {
+  id: string;
+  encounterId: string;
+  patientId: string;
+  patientName: string;
+  age: number;
+  testName: string;
+  instructions: string;
+  status: string;
+  result: string;
+  version: number;
+  updatedAt: string;
+};
+export type PharmacyOrder = {
+  id: string;
+  encounterId: string;
+  patientId: string;
+  patientName: string;
+  age: number;
+  allergies: string;
+  doctorName: string;
+  medicines: Medicine[];
+  status: string;
+  note: string;
+  version: number;
+  updatedAt: string;
+};
+export type WorkflowSnapshot = {
+  encounters: Encounter[];
+  labs: LabOrder[];
+  pharmacy: PharmacyOrder[];
+  patients: { id: string; name: string; age: number; phone: string }[];
+  checkedAt: string;
+};

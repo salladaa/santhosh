@@ -5,6 +5,7 @@ export async function request<T>(
 ): Promise<T> {
   const response = await fetch(url, {
     method,
+    signal: AbortSignal.timeout(15000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });

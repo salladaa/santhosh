@@ -8,6 +8,7 @@ import { request } from "@/lib/client";
 import { T, LanguageToggle } from "./language";
 import type { Session } from "@/lib/types";
 const links: { href: string; label: string; icon: IconName }[] = [
+  { href: "/admin/workflow", label: "Live workflow", icon: "activity" },
   { href: "/admin", label: "Overview", icon: "grid" },
   { href: "/admin/patients", label: "Patients", icon: "users" },
   { href: "/admin/appointments", label: "Appointments", icon: "calendar" },
@@ -55,16 +56,20 @@ export function Shell({
         { href: "/patient", label: "My health", icon: "heart" as IconName },
         { href: "/account", label: "Account", icon: "users" as IconName },
       ]
-    : links.filter(
-        (item) =>
-          role === "admin" ||
-          ![
-            "/admin/billing",
-            "/admin/staff",
-            "/admin/system",
-            "/admin/activity",
-          ].includes(item.href),
-      );
+    : ["reception", "lab", "pharmacy"].includes(role)
+      ? links.filter((item) =>
+          ["/admin/workflow", "/account"].includes(item.href),
+        )
+      : links.filter(
+          (item) =>
+            role === "admin" ||
+            ![
+              "/admin/billing",
+              "/admin/staff",
+              "/admin/system",
+              "/admin/activity",
+            ].includes(item.href),
+        );
   async function logout() {
     setBusy(true);
     setError("");
@@ -158,7 +163,13 @@ export function Shell({
                     ? "Administrator"
                     : role === "doctor"
                       ? "Doctor"
-                      : "Nurse"}
+                      : role === "nurse"
+                        ? "Nurse"
+                        : role === "reception"
+                          ? "Reception"
+                          : role === "lab"
+                            ? "Laboratory"
+                            : "Pharmacy"}
               </span>
             </div>
           </div>

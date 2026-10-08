@@ -37,3 +37,7 @@ If ABDM interoperability is desired, review the official [ABDM Health Data Manag
 ## Functional limits to decide before replacing all paper logs
 
 The present inpatient feature is an admission/nursing-note/discharge register, not a complete ICU or medication-administration system. It has no bed-transfer workflow, nursing shift handover sign-off, fluid balance chart, medication administration reconciliation or automated clinical alerts. Prescriptions contain doctor-entered instructions but no drug-interaction checking or legally qualified electronic signatures. Do not discontinue existing clinical processes that these screens do not cover.
+
+## Connected department acceptance checks
+
+Use synthetic records and separate named accounts on each device. Confirm intake appears for both doctors; only one claim succeeds; medicines and lab orders arrive only after confirmation; lab results appear for doctors and only reach patients after release; and dispensing status updates. Disconnect a tablet and confirm the stale-data notice, reconnect, then verify recovery and no duplicate orders. Check all devices use one hospital server. Review role permissions and clinician-approved fields. Browser visual checks of this iteration could not be completed automatically because the computer-use service was unavailable; complete the tablet trial before rollout.

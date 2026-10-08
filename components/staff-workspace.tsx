@@ -39,10 +39,14 @@ export function StaffWorkspace({ staff }: { staff: Staff[] }) {
               <select name="role">
                 <option value="doctor">Doctor / వైద్యుడు</option>
                 <option value="nurse">Nurse / నర్సు</option>
+                <option value="reception">Reception / రిసెప్షన్</option>
+                <option value="lab">Lab technician / ల్యాబ్ టెక్నీషియన్</option>
+                <option value="pharmacy">Pharmacy / ఫార్మసీ</option>
               </select>
             </label>
             <Field
               label="Registration number"
+              required={false}
               name="registration"
               maxLength={100}
             />
