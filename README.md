@@ -45,7 +45,7 @@ Open **Live workflow** (`/admin/workflow`). Administrators can create Reception,
 5. Pharmacy staff progress prescriptions through Preparing → Ready → Dispensed, with identity confirmation before dispensing.
 6. The patient's page shows their own released lab results and medicine preparation status. Other patients' orders are excluded by the server.
 
-Open screens poll the shared server every three seconds, with an update timestamp and connection-error notice. Updates usually appear on the next poll while connected; this is not a guaranteed three-second delivery SLA. Tablets must connect to the **same server and database**. `127.0.0.1` on a tablet points to that tablet, not the Mac. Use the configured hospital HTTPS address after deployment.
+Open screens poll the shared server every 30 seconds, with an update timestamp and connection-error notice. Updates usually appear on the next poll while connected; this is not a guaranteed 30-second delivery SLA. Tablets must connect to the **same server and database**. `127.0.0.1` on a tablet points to that tablet, not the Mac. Use the configured hospital HTTPS address after deployment.
 
 Polling does not reload or overwrite consultation forms. Drafts are held only in the current page: leaving/reloading the page loses unsaved input. Failed confirmations show an error; version checks and unique constraints prevent duplicate queue entries, conflicting claims and repeat department transitions. A timeout may mean the server saved before the connection failed: check the refreshed queue before retrying.
 
