@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Support the loopback URL used in the local setup instructions.
+  allowedDevOrigins: ["127.0.0.1"],
   poweredByHeader: false,
   output: "standalone",
   headers() {
