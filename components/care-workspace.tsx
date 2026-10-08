@@ -22,10 +22,19 @@ function VisitForm({
   role: Session["role"];
 }) {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const enteredMedicines = medicines.filter((medicine) =>
+    Object.values(medicine).some((field) => field.trim()),
+  );
   return (
     <WorkflowForm
       url={`/api/patients/${patientId}/visits`}
       label="Record visit"
+      beforeSubmit={() =>
+        enteredMedicines.length > 0 ||
+        window.confirm(
+          "Are you sure you want to continue without adding medicines?\n\nమందులు జోడించకుండా కొనసాగించాలనుకుంటున్నారా?",
+        )
+      }
       payload={(d) => ({
         doctorId: value(d, "doctorId"),
         complaint: value(d, "complaint"),
@@ -33,7 +42,7 @@ function VisitForm({
         vitals: value(d, "vitals"),
         notes: value(d, "notes"),
         followUp: value(d, "followUp"),
-        medicines,
+        medicines: enteredMedicines,
       })}
     >
       <div className="form-grid">
@@ -68,6 +77,10 @@ function VisitForm({
       <h3>
         <T>Medicines</T>
       </h3>
+      <p className="muted">
+        Medicines are optional. Empty medicine rows are ignored. / మందులు
+        జోడించడం ఐచ్ఛికం.
+      </p>
       {medicines.map((m, i) => (
         <div className="medicine-form" key={i}>
           {(
@@ -82,7 +95,10 @@ function VisitForm({
             <label key={key}>
               <T>{label}</T>
               <input
-                required={key !== "instructions"}
+                required={
+                  key !== "instructions" &&
+                  Object.values(m).some((field) => field.trim())
+                }
                 maxLength={key === "instructions" ? 500 : 200}
                 value={m[key]}
                 onChange={(e) =>

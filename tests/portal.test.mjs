@@ -635,6 +635,46 @@ test(
             },
           );
           await h.test(
+            "visits allow no medicines but reject incomplete prescriptions",
+            async () => {
+              const visit = {
+                complaint: "Demo visit",
+                diagnosis: "Demo only",
+                vitals: "",
+                notes: "",
+                followUp: "",
+                medicines: [],
+              };
+              const saved = await call("/api/patients/2/visits", {
+                method: "POST",
+                cookie: doctor,
+                data: visit,
+              });
+              assert.equal(saved.status, 201, saved.text);
+              const care = await call("/api/patients/2/care", {
+                cookie: sarah,
+              });
+              assert.deepEqual(care.json.visits[0].medicines, []);
+              const incomplete = await call("/api/patients/2/visits", {
+                method: "POST",
+                cookie: doctor,
+                data: {
+                  ...visit,
+                  medicines: [
+                    {
+                      name: "Test medicine",
+                      dose: "",
+                      frequency: "",
+                      duration: "",
+                      instructions: "",
+                    },
+                  ],
+                },
+              });
+              assert.equal(incomplete.status, 400);
+            },
+          );
+          await h.test(
             "report files are encrypted and access-controlled",
             async () => {
               const bytes = Buffer.from("%PDF-1.4\nTest report\n%%EOF");

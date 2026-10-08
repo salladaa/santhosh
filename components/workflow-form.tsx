@@ -9,6 +9,7 @@ export function WorkflowForm({
   children,
   label = "Save",
   onSuccess,
+  beforeSubmit,
 }: {
   url: string;
   method?: string;
@@ -16,6 +17,7 @@ export function WorkflowForm({
   children: React.ReactNode;
   label?: string;
   onSuccess?: () => void;
+  beforeSubmit?: (data: FormData) => boolean;
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -24,10 +26,12 @@ export function WorkflowForm({
       className="workflow-form"
       onSubmit={async (e) => {
         e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        if (beforeSubmit && !beforeSubmit(data)) return;
         setBusy(true);
         setError("");
         try {
-          await request(url, method, payload(new FormData(e.currentTarget)));
+          await request(url, method, payload(data));
           if (onSuccess) onSuccess();
           else window.location.reload();
         } catch (e) {
