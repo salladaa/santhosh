@@ -336,7 +336,7 @@ export function addVisit(
     return {
       name: textField(d, "name"),
       dose: textField(d, "dose"),
-      frequency: textField(d, "frequency"),
+      frequency: textField(d, "frequency", 200, false),
       duration: textField(d, "duration"),
       instructions: textField(d, "instructions", 500, false),
     };

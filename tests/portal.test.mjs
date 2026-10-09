@@ -1214,7 +1214,7 @@ test(
               {
                 name: "Test medicine",
                 dose: "Test dose",
-                frequency: "Test frequency",
+                frequency: "",
                 duration: "Test duration",
                 instructions: "Demo only",
               },
@@ -1263,6 +1263,11 @@ test(
           const rx = (await call("/api/workflow", { cookie: pharmacy })).json;
           assert.deepEqual(rx.labs, []);
           assert.equal(rx.pharmacy[0].medicines[0].name, "Test medicine");
+          assert.equal(
+            rx.pharmacy[0].medicines[0].frequency,
+            "",
+            "Lab orders and prescriptions can be sent without inventing a frequency",
+          );
           const labId = labView.labs[0].id,
             rxId = rx.pharmacy[0].id;
           assert.equal(

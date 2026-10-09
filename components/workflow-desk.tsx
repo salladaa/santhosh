@@ -127,9 +127,16 @@ function Consultation({
         onSuccess={refresh}
         beforeSubmit={() =>
           window.confirm(
-            entered.length
-              ? "Confirm this consultation and send the prescription and lab orders?"
-              : "Are you sure you want to continue without adding medicines? Any lab orders will still be sent.\nమందులు జోడించకుండా కొనసాగించాలనుకుంటున్నారా?",
+            entered.some((m) => !m.frequency.trim())
+              ? "Frequency has not been specified for: " +
+                  entered
+                    .filter((m) => !m.frequency.trim())
+                    .map((m) => m.name)
+                    .join(", ") +
+                  ". Continue and send the prescription and lab orders? Pharmacy will see Frequency: Not specified."
+              : entered.length
+                ? "Confirm this consultation and send the prescription and lab orders?"
+                : "Are you sure you want to continue without adding medicines? Any lab orders will still be sent.\nమందులు జోడించకుండా కొనసాగించాలనుకుంటున్నారా?",
           )
         }
         payload={(d) => ({
@@ -180,11 +187,13 @@ function Consultation({
             ).map(([key, label]) => (
               <label key={key}>
                 <T>{label}</T>
+                {key === "frequency" && " (optional)"}
                 <input
                   value={m[key]}
                   maxLength={key === "instructions" ? 500 : 200}
                   required={
                     key !== "instructions" &&
+                    key !== "frequency" &&
                     Object.values(m).some((v) => !!v.trim())
                   }
                   onChange={(e) =>
@@ -386,8 +395,8 @@ function Pharmacy({
           </p>
           {order.medicines.map((m, i) => (
             <p key={i}>
-              <strong>{m.name}</strong> · {m.dose} · {m.frequency} ·{" "}
-              {m.duration}
+              <strong>{m.name}</strong> · {m.dose} · Frequency:{" "}
+              {m.frequency || "Not specified"} · {m.duration}
               <br />
               {m.instructions}
             </p>

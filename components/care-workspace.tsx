@@ -31,10 +31,19 @@ function VisitForm({
       url={`/api/patients/${patientId}/visits`}
       label="Record visit"
       beforeSubmit={() =>
-        enteredMedicines.length > 0 ||
-        window.confirm(
-          "Are you sure you want to continue without adding medicines?\n\nమందులు జోడించకుండా కొనసాగించాలనుకుంటున్నారా?",
-        )
+        enteredMedicines.some((m) => !m.frequency.trim())
+          ? window.confirm(
+              "Frequency has not been specified for: " +
+                enteredMedicines
+                  .filter((m) => !m.frequency.trim())
+                  .map((m) => m.name)
+                  .join(", ") +
+                ". Continue saving without frequency?",
+            )
+          : enteredMedicines.length > 0 ||
+            window.confirm(
+              "Are you sure you want to continue without adding medicines?\n\nమందులు జోడించకుండా కొనసాగించాలనుకుంటున్నారా?",
+            )
       }
       payload={(d) => ({
         doctorId: value(d, "doctorId"),
@@ -95,9 +104,11 @@ function VisitForm({
           ).map(([key, label]) => (
             <label key={key}>
               <T>{label}</T>
+              {key === "frequency" && " (optional)"}
               <input
                 required={
                   key !== "instructions" &&
+                  key !== "frequency" &&
                   Object.values(m).some((field) => field.trim())
                 }
                 maxLength={key === "instructions" ? 500 : 200}
@@ -299,7 +310,7 @@ export function CareWorkspace({
                         <tr key={i}>
                           <td>{m.name}</td>
                           <td>{m.dose}</td>
-                          <td>{m.frequency}</td>
+                          <td>{m.frequency || "Not specified"}</td>
                           <td>{m.duration}</td>
                           <td>{m.instructions || "—"}</td>
                         </tr>
