@@ -51,7 +51,7 @@ function useWorkflow() {
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       await refresh();
-      if (!stopped) timer = setTimeout(poll, 30000);
+      if (!stopped) timer = setTimeout(poll, 60000);
     }
     void poll();
     return () => {
@@ -73,7 +73,7 @@ function Status({
       {error
         ? `Updates interrupted — displayed records may be outdated. ${error}`
         : data
-          ? `Connected · checks every 30 seconds · last update ${dateTimeLabel(data.checkedAt)} IST`
+          ? `Connected · checks every 1 minute · last update ${dateTimeLabel(data.checkedAt)} IST`
           : "Connecting to hospital queue…"}
     </div>
   );
