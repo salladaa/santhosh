@@ -10,6 +10,7 @@ export function WorkflowForm({
   label = "Save",
   onSuccess,
   beforeSubmit,
+  onBusyChange,
 }: {
   url: string;
   method?: string;
@@ -18,6 +19,7 @@ export function WorkflowForm({
   label?: string;
   onSuccess?: () => void;
   beforeSubmit?: (data: FormData) => boolean;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -26,15 +28,16 @@ export function WorkflowForm({
       className="workflow-form"
       onSubmit={async (e) => {
         e.preventDefault();
+        if (busy) return;
         const data = new FormData(e.currentTarget);
         if (beforeSubmit && !beforeSubmit(data)) return;
         setBusy(true);
+        onBusyChange?.(true);
         setError("");
         try {
           await request(url, method, payload(data));
           if (onSuccess) {
             onSuccess();
-            setBusy(false);
           } else window.location.reload();
         } catch (e) {
           setError(
@@ -45,7 +48,9 @@ export function WorkflowForm({
                 ? e.message
                 : "Unable to save.",
           );
+        } finally {
           setBusy(false);
+          onBusyChange?.(false);
         }
       }}
     >

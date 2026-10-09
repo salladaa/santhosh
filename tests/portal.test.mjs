@@ -1168,6 +1168,21 @@ test(
           const received = await post(receptionist, intake);
           assert.equal(received.status, 201, received.text);
           const encounterId = received.json.id;
+          const previousDay = "2026-10-08T06:30:00.000Z";
+          const fixture = new DatabaseSync(dbPath);
+          fixture
+            .prepare("UPDATE encounters SET created_at=? WHERE id=?")
+            .run(previousDay, encounterId);
+          fixture.close();
+          const returning = (
+            await call("/api/workflow", { cookie: receptionist })
+          ).json.patients.find((p) => p.id === "3");
+          assert.equal(returning.lastVisitAt, previousDay);
+          assert.equal(returning.visitCount, 1);
+          assert.equal(returning.lastProblem, intake.complaint);
+          assert.equal(returning.lastReceptionNotes, intake.notes);
+          assert.equal(returning.age, 50);
+          assert.equal(returning.phone, "807-555-9012");
           assert.equal((await post(receptionist, intake)).status, 409);
           const queue = await call("/api/workflow", {
             cookie: accounts.doctor.cookie,
@@ -1227,6 +1242,16 @@ test(
           );
           assert.equal((await post(winner.cookie, prescription)).status, 201);
           assert.equal((await post(winner.cookie, prescription)).status, 409);
+          const afterConsultation = (
+            await call("/api/workflow", { cookie: receptionist })
+          ).json.patients.find((p) => p.id === "3");
+          assert.equal(
+            afterConsultation.visitCount,
+            1,
+            "Consultation and intake are one visit, not two",
+          );
+          assert.equal(afterConsultation.lastReceptionNotes, intake.notes);
+
           let labView = (await call("/api/workflow", { cookie: lab })).json;
           assert.equal(labView.labs.length, 1);
           assert.deepEqual(labView.pharmacy, []);

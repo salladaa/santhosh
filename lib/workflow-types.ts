@@ -41,10 +41,20 @@ export type PharmacyOrder = {
   version: number;
   updatedAt: string;
 };
+export type ReceptionPatient = {
+  id: string;
+  name: string;
+  age: number;
+  phone: string;
+  lastVisitAt: string | null;
+  visitCount: number;
+  lastProblem: string | null;
+  lastReceptionNotes: string | null;
+};
 export type WorkflowSnapshot = {
   encounters: Encounter[];
   labs: LabOrder[];
   pharmacy: PharmacyOrder[];
-  patients: { id: string; name: string; age: number; phone: string }[];
+  patients: ReceptionPatient[];
   checkedAt: string;
 };

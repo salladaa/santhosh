@@ -63,7 +63,20 @@ export function workflowSnapshot(user: Session): WorkflowSnapshot {
   const patients = front
     ? db()
         .prepare(
-          "SELECT id,json_extract(data,'$.name') AS name,json_extract(data,'$.age') AS age,json_extract(data,'$.phone') AS phone FROM patients ORDER BY name",
+          `WITH recorded_visits AS (
+            SELECT patient_id,created_at AS visited_at,complaint AS problem,intake_notes AS reception_notes FROM encounters
+            UNION ALL
+            SELECT v.patient_id,v.visit_date,'Consultation recorded','' FROM visits v
+            WHERE NOT EXISTS (SELECT 1 FROM encounters e WHERE e.visit_id=v.id)
+          ), ranked_visits AS (
+            SELECT *,ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY visited_at DESC) AS position,
+              COUNT(*) OVER(PARTITION BY patient_id) AS visit_count FROM recorded_visits
+          )
+          SELECT p.id,json_extract(p.data,'$.name') AS name,json_extract(p.data,'$.age') AS age,
+            json_extract(p.data,'$.phone') AS phone,r.visited_at AS lastVisitAt,COALESCE(r.visit_count,0) AS visitCount,
+            r.problem AS lastProblem,r.reception_notes AS lastReceptionNotes
+          FROM patients p LEFT JOIN ranked_visits r ON r.patient_id=p.id AND r.position=1
+          ORDER BY r.visited_at DESC,name COLLATE NOCASE`,
         )
         .all()
         .map((r) => ({ ...r }))

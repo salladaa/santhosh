@@ -1,4 +1,5 @@
 "use client";
+import { ReceptionIntake } from "./reception-intake";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Session, Medicine } from "@/lib/types";
@@ -516,47 +517,11 @@ export function WorkflowDesk({ user }: { user: Session }) {
                   </p>
                 </WorkflowForm>
               </details>
-              <section className="panel workflow-panel">
-                <h2>
-                  <T>Send to doctor</T>
-                </h2>
-                <WorkflowForm
-                  url="/api/workflow"
-                  label="Send to doctor"
-                  onSuccess={refresh}
-                  payload={(d) => ({
-                    action: "intake",
-                    patientId: value(d, "patientId"),
-                    complaint: value(d, "complaint"),
-                    notes: value(d, "notes"),
-                  })}
-                >
-                  <label>
-                    <T>Patient</T>
-                    <select name="patientId" required>
-                      <option value="">Select registered patient</option>
-                      {data.patients.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} · {p.age} · {p.phone} · {p.id.slice(0, 8)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <TextArea
-                    name="complaint"
-                    label="Problem / reason for visit"
-                  />
-                  <TextArea
-                    name="notes"
-                    label="Reception notes"
-                    required={false}
-                  />
-                  <p className="muted">
-                    Either doctor can pick up this patient. No doctor assignment
-                    is needed here.
-                  </p>
-                </WorkflowForm>
-              </section>
+              <ReceptionIntake
+                patients={data.patients}
+                checkedAt={data.checkedAt}
+                refresh={refresh}
+              />
             </>
           )}
           {(front || clinical || user.role === "nurse") && (
